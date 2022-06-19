@@ -8,32 +8,33 @@
 extern "C" {
     #include <libavcodec/avcodec.h>
 };
+#include "util/SafeQueue.h"
 
 class BaseChannel {
 public:
     int stream_index;
-//    SafeQueue<AVPacket *> packets;
-//    SafeQueue<AVFrame *> frames;
+    SafeQueue<AVPacket *> packets;
+    SafeQueue<AVFrame *> frames;
     bool isPlaying;
     AVCodecContext *pCodecContext = 0;
 
     BaseChannel(int streamIndex, AVCodecContext *pCodecContext) : stream_index(streamIndex),
                                                                   pCodecContext(pCodecContext) {
         // 给队列设置Callback，Callback释放队列里面的数据
-//        packets.setReleaseCallback(releaseAVPacket);
-//        frames.setReleaseCallback(releaseAVFrame)
+        packets.setReleaseCallback(releaseAVPacket);
+        frames.setReleaseCallback(releaseAVFrame);
     }
 
     virtual ~BaseChannel() {
-//        packets.clear();
-//        frames.clear();
+        packets.clear();
+        frames.clear();
     }
     /**
      * 释放队列中所有的 AVPacket *
      * @param packet
      */
     // typedef void (*ReleaseCallback)(T *);
-    static void releaseAVPacket(AVPacket **p) {
+    static void releaseAVPacket(AVPacket **p) { //思考题：回调函数定义中参数是AVPacket类型二级指针，为什么调用用的一级指针?
         if (p) {
             av_packet_free(p); // 释放队列里面的 T == AVPacket
             *p = 0;
