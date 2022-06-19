@@ -1,2 +1,2 @@
 # WePlayerKT
-kotlin 实现视频播放器
+Kotlin 实现视频播放器
