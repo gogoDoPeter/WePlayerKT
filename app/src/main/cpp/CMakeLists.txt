@@ -13,6 +13,7 @@ set(FFMPEG ${CMAKE_SOURCE_DIR}/ffmpeg)
 set(RTMP ${CMAKE_SOURCE_DIR}/rtmp)
 
 include_directories(${FFMPEG}/include) # 导入ffmpeg的头文件
+include_directories(${CMAKE_SOURCE_DIR}/include)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -L${FFMPEG}/libs/${CMAKE_ANDROID_ARCH_ABI}") #ffmpeg库指定
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -L${RTMP}/libs/${CMAKE_ANDROID_ARCH_ABI}") #rtmp库指定
