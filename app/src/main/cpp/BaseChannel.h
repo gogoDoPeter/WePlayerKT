@@ -16,10 +16,10 @@ public:
     SafeQueue<AVPacket *> packets;
     SafeQueue<AVFrame *> frames;
     bool isPlaying;
-    AVCodecContext *pCodecContext = 0;
+    AVCodecContext *codecContext = 0;
 
     BaseChannel(int streamIndex, AVCodecContext *pCodecContext) : stream_index(streamIndex),
-                                                                  pCodecContext(pCodecContext) {
+                                                                  codecContext(pCodecContext) {
         // 给队列设置Callback，Callback释放队列里面的数据
         packets.setReleaseCallback(releaseAVPacket);
         frames.setReleaseCallback(releaseAVFrame);

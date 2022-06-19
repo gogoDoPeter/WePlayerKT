@@ -20,12 +20,16 @@ extern "C" {
 
 class PlayerEngine {
 private:
-    char *data_source = 0;
+    char *data_source = 0; // 指针 * 请赋初始值
     pthread_t pid_prepare;
-    AVFormatContext *formatContext = 0;
+    pthread_t pid_start;
+
+    AVFormatContext *formatContext = 0; // 媒体上下文 封装格式
     AudioChannel *audio_channel = 0;
     VideoChannel *video_channel = 0;
     JNICallbackHelper *helper = 0;
+    bool isPlaying=0; // 是否播放
+    RenderCallback renderCallback;
 
 public:
     PlayerEngine(const char *data_source, JNICallbackHelper *helper);
@@ -34,8 +38,12 @@ public:
     ~PlayerEngine();
 
     void prepare();
-
     void prepare_();
+
+    void start();
+    void start_();
+
+    void setRenderCallback(RenderCallback renderCallback);
 };
 
 

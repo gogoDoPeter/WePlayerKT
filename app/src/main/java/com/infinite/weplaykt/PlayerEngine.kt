@@ -1,11 +1,14 @@
 package com.infinite.weplaykt
 
+import android.view.Surface
+import android.view.SurfaceHolder
+import android.view.SurfaceView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleObserver
 import androidx.lifecycle.OnLifecycleEvent
 import com.infinite.weplaykt.util.FFMPGE
 
-class PlayerEngine : LifecycleObserver {
+class PlayerEngine : LifecycleObserver, SurfaceHolder.Callback {
 
     companion object {
         // Used to load the 'weplaykt' library on application startup.
@@ -19,6 +22,7 @@ class PlayerEngine : LifecycleObserver {
     private var onErrorListener: OnErrorListener? = null
     private var TAG: String = "PlayerEngine"
     private var dataSource: String? = null
+    private var surfaceHolder : SurfaceHolder? = null
 
     fun setDataSource(dataSource: String?) {
         this.dataSource = dataSource
@@ -59,7 +63,8 @@ class PlayerEngine : LifecycleObserver {
                 FFMPGE.FFMPEG_CAN_NOT_FIND_STREAMS -> msg = "找不到流媒体$title$ffmpegError"
                 FFMPGE.FFMPEG_FIND_DECODER_FAIL -> msg = "找不到解码器$title$ffmpegError"
                 FFMPGE.FFMPEG_ALLOC_CODEC_CONTEXT_FAIL -> msg = "无法根据解码器创建上下文$title$ffmpegError"
-                FFMPGE.FFMPEG_CODEC_CONTEXT_PARAMETERS_FAIL -> msg = "根据流信息 配置上下文参数失败$title$ffmpegError"
+                FFMPGE.FFMPEG_CODEC_CONTEXT_PARAMETERS_FAIL -> msg =
+                    "根据流信息 配置上下文参数失败$title$ffmpegError"
                 FFMPGE.FFMPEG_OPEN_DECODER_FAIL -> msg = "打开解码器失败$title$ffmpegError"
                 FFMPGE.FFMPEG_NOMEDIA -> msg = "没有音视频$title$ffmpegError"
             }
@@ -83,8 +88,32 @@ class PlayerEngine : LifecycleObserver {
         this.onErrorListener = onErrorListener
     }
 
+    /**
+     * set setSurfaceView
+     * @param surfaceView
+     */
+    fun setSurfaceView(surfaceView: SurfaceView) {
+        if (surfaceHolder != null) {
+            surfaceHolder?.removeCallback(this) // 清除上一次的
+        }
+        surfaceHolder = surfaceView.holder
+        surfaceHolder?.addCallback(this) // 监听
+    }
+
+    override fun surfaceCreated(holder: SurfaceHolder) {
+        // 之前开发，就是写这里来调用 setSurfaceNative，注意在surfaceChanged中调用来设置更好
+    }
+
+    override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
+        setSurfaceNative(holder.surface, nativeObj!!)
+    }
+
+    override fun surfaceDestroyed(holder: SurfaceHolder) {
+    }
+
     private external fun prepareNative(dataSource: String): Long
     private external fun startNative(nativeObj: Long)
     private external fun stopNative(nativeObj: Long)
     private external fun releaseNative(nativeObj: Long)
+    private external fun setSurfaceNative(surface: Surface, nativeObj: Long)
 }

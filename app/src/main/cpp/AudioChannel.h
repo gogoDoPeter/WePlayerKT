@@ -18,6 +18,9 @@ public:
 
     virtual ~AudioChannel();
 
+    void start();
+
+    void stop();
 };
 
 

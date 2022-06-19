@@ -7,6 +7,7 @@ import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.os.Environment
 import android.util.Log
+import android.view.SurfaceView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.app.ActivityCompat
@@ -20,6 +21,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private var tvState: TextView? = null
     private var player: PlayerEngine? = null
+    private var surfaceView: SurfaceView? = null
     private var TAG:String="MainActivity"
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -28,8 +30,12 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         tvState = binding.tvState
+        surfaceView = binding.surfaceView
+
         player = PlayerEngine()
         lifecycle.addObserver(player!!)// MainActivity做为被观察者，与PlayerEngine观察者建立绑定关系
+
+        player?.setSurfaceView(surfaceView!!)
         player?.setDataSource(File(Environment.getExternalStorageDirectory(),
             "demo.mp4").absolutePath)
 

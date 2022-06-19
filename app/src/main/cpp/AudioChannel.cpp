@@ -12,3 +12,11 @@ AudioChannel::AudioChannel(int streamIndex, AVCodecContext *pCodecContext)
 AudioChannel::~AudioChannel() {
 
 }
+
+void AudioChannel::start() {
+
+}
+
+void AudioChannel::stop() {
+
+}

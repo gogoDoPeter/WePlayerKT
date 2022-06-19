@@ -47,15 +47,15 @@ void PlayerEngine::prepare_() {// 属于子线程了,并且拥有PlayerEngine的
     av_dict_free(&dictionary);
 
     if (ret < 0) { //0 == success
-        LOGD("avformat_open_input fail, ret:%d, %s",ret, av_err2str(ret))
-        if(helper)
+        LOGD("avformat_open_input fail, ret:%d, %s", ret, av_err2str(ret))
+        if (helper)
             helper->onError(THREAD_TYPE_CHILD, FFMPEG_CAN_NOT_OPEN_URL, av_err2str(ret));
         return;
     }
     // 查找媒体中的音视频流的信息
     ret = avformat_find_stream_info(formatContext, nullptr);
     if (ret < 0) {
-        LOGD("avformat_find_stream_info fail, ret:%d",ret)
+        LOGD("avformat_find_stream_info fail, ret:%d", ret)
         if (helper) {
             helper->onError(THREAD_TYPE_CHILD, FFMPEG_CAN_NOT_FIND_STREAMS, av_err2str(ret));
         }
@@ -71,7 +71,7 @@ void PlayerEngine::prepare_() {// 属于子线程了,并且拥有PlayerEngine的
         //avcodec_find_encoder() //也可以获取编码器，只是这里暂时只用到解码器
         AVCodec *pCodec = avcodec_find_decoder(pParameters->codec_id);
         if (!pCodec) {
-            LOGD("pCodec is null, ret:%d",ret)
+            LOGD("pCodec is null, ret:%d", ret)
             if (helper) {
                 helper->onError(THREAD_TYPE_CHILD, FFMPEG_FIND_DECODER_FAIL, av_err2str(ret));
             }
@@ -80,25 +80,27 @@ void PlayerEngine::prepare_() {// 属于子线程了,并且拥有PlayerEngine的
         //获取编解码器 上下文,此时pCodecContext is an AVCodecContext filled with default values
         AVCodecContext *pCodecContext = avcodec_alloc_context3(pCodec);
         if (!pCodecContext) {
-            LOGD("pCodecContext is null, ret:%d",ret)
+            LOGD("codecContext is null, ret:%d", ret)
             if (helper) {
-                helper->onError(THREAD_TYPE_CHILD, FFMPEG_ALLOC_CODEC_CONTEXT_FAIL, av_err2str(ret));
+                helper->onError(THREAD_TYPE_CHILD, FFMPEG_ALLOC_CODEC_CONTEXT_FAIL,
+                                av_err2str(ret));
             }
             return;
         }
         //将参数赋值给codecContext
         ret = avcodec_parameters_to_context(pCodecContext, pParameters);
         if (ret < 0) {
-            LOGD("avcodec_parameters_to_context fail, ret:%d",ret)
+            LOGD("avcodec_parameters_to_context fail, ret:%d", ret)
             if (helper) {
-                helper->onError(THREAD_TYPE_CHILD, FFMPEG_CODEC_CONTEXT_PARAMETERS_FAIL, av_err2str(ret));
+                helper->onError(THREAD_TYPE_CHILD, FFMPEG_CODEC_CONTEXT_PARAMETERS_FAIL,
+                                av_err2str(ret));
             }
             return;
         }
         //打开解码器
         ret = avcodec_open2(pCodecContext, pCodec, nullptr);
         if (ret) { //非0表示失败，主要是负值
-            LOGD("avcodec_open2 fail, ret:%d",ret)
+            LOGD("avcodec_open2 fail, ret:%d", ret)
             if (helper) {
                 helper->onError(THREAD_TYPE_CHILD, FFMPEG_OPEN_DECODER_FAIL, av_err2str(ret));
             }
@@ -109,20 +111,67 @@ void PlayerEngine::prepare_() {// 属于子线程了,并且拥有PlayerEngine的
             audio_channel = new AudioChannel(stream_index, pCodecContext);
         } else if (pParameters->codec_type == AVMediaType::AVMEDIA_TYPE_VIDEO) {
             video_channel = new VideoChannel(stream_index, pCodecContext);
+            video_channel->setRenderCallback(renderCallback);
         }
     }//for end
 
     //如果流中 没有 音频 也没有 视频
     if (!audio_channel && !video_channel) {
-        LOGD(" params of channel fail, audio_channel:%p,video_channel:%p",audio_channel,video_channel)
+        LOGD(" params of channel fail, audio_channel:%p,video_channel:%p", audio_channel,
+             video_channel)
         if (helper) {
             helper->onError(THREAD_TYPE_CHILD, FFMPEG_NOMEDIA, av_err2str(ret));
         }
         return;
     }
 
-    if(helper){
-        LOGD(" call onPrepared ret:%d",ret)
+    if (helper) {
+        LOGD(" call onPrepared ret:%d", ret)
         helper->onPrepared(THREAD_TYPE_CHILD);
     }
+}
+
+void *task_start(void *args) {
+    PlayerEngine *player = static_cast<PlayerEngine *>(args);
+    player->start_();
+    return nullptr;
+}
+
+void PlayerEngine::start() {
+    isPlaying = 1;
+    if (video_channel) {
+        video_channel->start();
+    }
+    if(audio_channel){
+        audio_channel->start();
+    }
+    pthread_create(&pid_start, nullptr, task_start, this);// this == PlayerEngine的实例
+}
+
+void PlayerEngine::start_() { // 子线程 把 AVPacket * 丢到 队列里面去  不区分 音频 视频
+    while(isPlaying){// AVPacket 可能是音频 也可能是视频（压缩包）
+        AVPacket *packet = av_packet_alloc();
+        int ret = av_read_frame(formatContext, packet);
+        if(!ret){ //0 == success
+            if(video_channel && video_channel->stream_index == packet->stream_index){
+                //注意这里传入的packet是指针变量
+                video_channel->packets.insertToQueue(packet);
+            }else if(audio_channel && audio_channel->stream_index == packet->stream_index){
+                //TODO
+            }
+        }else if(ret == AVERROR_EOF){
+            // TODO 表示读完了，要考虑是否播放完成，表示读完了 并不代表播放完毕
+        }else{ //read error 出现了错误，结束当前循环
+            break;
+        }
+    }//end while
+    isPlaying = 0;
+    if(video_channel)
+        video_channel->stop();
+    if(audio_channel)
+        audio_channel->stop();
+}
+
+void PlayerEngine::setRenderCallback(RenderCallback renderCallback) {
+    this->renderCallback = renderCallback;
 }
