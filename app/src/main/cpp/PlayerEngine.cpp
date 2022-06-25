@@ -17,11 +17,11 @@ PlayerEngine::PlayerEngine(const char *data_source, JNICallbackHelper *helper) {
 PlayerEngine::~PlayerEngine() {
     if (data_source) {
         delete data_source;
-        data_source= nullptr;
+        data_source = nullptr;
     }
     if (helper) {
         delete helper;
-        helper= nullptr;
+        helper = nullptr;
     }
 }
 
@@ -153,33 +153,43 @@ void PlayerEngine::start() {
     // 音频：1.解码    2.播放
     // 1.把队列里面的压缩包(AVPacket *)取出来，然后解码成（AVFrame * ）原始包 ----> 保存队列
     // 2.把队列里面的原始包(AVFrame *)取出来， 音频播放
-    if(audio_channel){
+    if (audio_channel) {
         audio_channel->start();
     }
     pthread_create(&pid_start, nullptr, task_start, this);// this == PlayerEngine的实例
 }
 
 void PlayerEngine::start_() { // 子线程 把 AVPacket * 丢到 队列里面去  不区分 音频 视频
-    while(isPlaying){// AVPacket 可能是音频 也可能是视频（压缩包）
+    while (isPlaying) {// AVPacket 可能是音频 也可能是视频（压缩包）
+        //控制packet队列大小，等待队列中的数据被消费, 优化内存占用
+        if (video_channel && video_channel->packets.size() > 100) {
+            av_usleep(10 * 1000);//睡眠10毫秒 单位：microseconds 微妙
+            continue;
+        }
+        if (audio_channel && audio_channel->packets.size() > 100) {
+            av_usleep(10 * 1000);//
+            continue;
+        }
+
         AVPacket *packet = av_packet_alloc();
         int ret = av_read_frame(formatContext, packet);
-        if(!ret){ //0 == success
-            if(video_channel && video_channel->stream_index == packet->stream_index){
+        if (!ret) { //0 == success
+            if (video_channel && video_channel->stream_index == packet->stream_index) {
                 //注意这里传入的packet是指针变量
                 video_channel->packets.insertToQueue(packet);
-            }else if(audio_channel && audio_channel->stream_index == packet->stream_index){
+            } else if (audio_channel && audio_channel->stream_index == packet->stream_index) {
                 audio_channel->packets.insertToQueue(packet);
             }
-        }else if(ret == AVERROR_EOF){
+        } else if (ret == AVERROR_EOF) {
             // TODO 表示读完了，要考虑是否播放完成，表示读完了 并不代表播放完毕
-        }else{ //read error 出现了错误，结束当前循环
+        } else { //read error 出现了错误，结束当前循环
             break;
         }
     }//end while
     isPlaying = 0;
-    if(video_channel)
+    if (video_channel)
         video_channel->stop();
-    if(audio_channel)
+    if (audio_channel)
         audio_channel->stop();
 }
 

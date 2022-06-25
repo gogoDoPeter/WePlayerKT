@@ -9,6 +9,7 @@ extern "C" {
     #include <libavcodec/avcodec.h>
 };
 #include "util/SafeQueue.h"
+#include <LogUtils.h>
 
 class BaseChannel {
 public:

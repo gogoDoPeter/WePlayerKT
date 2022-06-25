@@ -11,6 +11,7 @@ extern "C" {
     #include <libavcodec/avcodec.h>
     #include <libswscale/swscale.h>
     #include <libavutil/imgutils.h>
+    #include <libavutil/time.h>
 };
 // 函数指针声明定义 用作回调函数
 typedef void(*RenderCallback)(uint8_t *,int,int,int);

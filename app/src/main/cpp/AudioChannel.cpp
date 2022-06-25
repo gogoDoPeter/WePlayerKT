@@ -2,7 +2,6 @@
 // Created by Peter Liu on 2022/6/18 0018.
 //
 
-#include <LogUtils.h>
 #include "AudioChannel.h"
 
 AudioChannel::AudioChannel(int stream_index, AVCodecContext *codecContext)
@@ -47,6 +46,11 @@ void *task_audio_decode(void *args) {
 void AudioChannel::audio_decode() {
     AVPacket *pkt = nullptr;
     while (isPlaying) {
+        if(isPlaying && frames.size() > 100){ //控制frames队列大小，等待队列中的数据被消费, 优化内存
+            av_usleep(10*1000);
+            continue;
+        }
+
         int ret = packets.getQueueAndDel(pkt);
         if (!isPlaying) {
             break;
@@ -56,7 +60,7 @@ void AudioChannel::audio_decode() {
         }
         // 第一步：把压缩包 AVPack发送给 FFmpeg缓存区
         ret = avcodec_send_packet(codecContext, pkt);
-        releaseAVPacket(&pkt);//FFmpeg源码内部 缓存了一份pkt副本，所以这里可以直接释放
+//        releaseAVPacket(&pkt);//FFmpeg源码内部 缓存了一份pkt副本，所以这里可以直接释放   把这个释放放后面了
         if (ret) { // 0 == success, if not 0 fail
             break;
         }
@@ -66,12 +70,21 @@ void AudioChannel::audio_decode() {
         if (ret == AVERROR(EAGAIN)) {
             continue; // 有可能音频帧，也会获取失败，重新拿一次
         } else if (ret != 0) {
+            // 解码视频的frame出错，马上释放，防止你在堆区开辟了空间泄漏
+            if(frame){
+                releaseAVFrame(&frame);
+            }
             break; // avcodec_receive_frame失败了，注意刚刚通过av_frame_alloc分配的frame是否要释放?
         }
         //拿到原始包，加入队列中，原始包是pcm数据
         frames.insertToQueue(frame);
+
+        // 释放pkt本身空间释放 和 pkt成员指向的堆空间释放
+        av_packet_unref(pkt); // ffmpeg中对pkt的引用计数减1操作，当计数为0时释放成员分配的堆区
+        releaseAVPacket(&pkt); // 释放AVPacket * 本身的堆区空间
     }
-    releaseAVPacket(&pkt);
+    av_packet_unref(pkt); // ffmpeg中对pkt的引用计数减1操作，当计数为0时释放成员分配的堆区
+    releaseAVPacket(&pkt); // 释放AVPacket * 本身的堆区空间
 }
 
 // 此函数会一直被 缓存队列bq 来调用，注意不是靠while循环拿队列那数据的
@@ -112,6 +125,9 @@ int AudioChannel::getPcmAndSize() {
 //             frame->sample_rate, frame->nb_samples)
         break;
     }
+    av_frame_unref(frame);  // 减1 = 0 释放成员执行的堆区
+    releaseAVFrame(&frame); // 释放AVFrame * 本身堆区空间
+
     return pcm_data_size;
 }
 

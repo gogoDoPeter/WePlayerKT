@@ -15,6 +15,11 @@ VideoChannel::~VideoChannel() {
 void VideoChannel::video_decode() {
     AVPacket *pkt = nullptr;
     while (isPlaying) {
+        if(isPlaying && frames.size() > 100){
+            av_usleep(10*1000);
+            continue;
+        }
+
         int ret = packets.getQueueAndDel(pkt); //阻塞式函数
         if (!isPlaying) { // 如果关闭了播放
             break;
@@ -25,7 +30,7 @@ void VideoChannel::video_decode() {
         // 第一步：把我们的 压缩包 AVPack发送给 FFmpeg缓存区
         ret = avcodec_send_packet(codecContext, pkt);
         // FFmpeg源码内部 缓存了一份pkt副本，所以这里用完可以及时的释放
-        releaseAVPacket(&pkt);
+//        releaseAVPacket(&pkt); //放后面做
         if (ret) { //ret != 0 命中
             break;
         }
@@ -33,14 +38,22 @@ void VideoChannel::video_decode() {
         AVFrame *frame = av_frame_alloc();
         ret = avcodec_receive_frame(codecContext, frame);
         if (ret == AVERROR(EAGAIN)) {
-            continue;// B帧 B帧参考前面成功,但是参考后面失败 (可能是P帧还没有出来)，那么等一等，重新再拿一次可能就拿到了
-        } else if (ret != 0) {
+            continue;// B帧 B帧参考前面成功,但是参考后面失败 (可能是P帧还没有出来)，那么等一等重新再拿一次可能就拿到了
+        } else if (ret != 0) { // 出错误了
+            //解码视频的frame出错，马上释放，防止你在堆区开辟了空间
+            if(frame){
+                releaseAVFrame(&frame);
+            }
             break;
         }
         //拿到 原始包了，加入队列
         frames.insertToQueue(frame);
+
+        av_packet_unref(pkt); // ffmpeg中对pkt的引用计数减1操作，当计数为0时释放成员分配的堆区
+        releaseAVPacket(&pkt); // 释放AVPacket * 本身的堆区空间
     }// while end
-    releaseAVPacket(&pkt);
+    av_packet_unref(pkt);// ffmpeg中对pkt的引用计数减1操作，当计数为0时释放成员分配的堆区
+    releaseAVPacket(&pkt); // 释放AVPacket * 本身的堆区空间
 }
 
 void *task_video_decode(void *args) {
@@ -87,9 +100,10 @@ void VideoChannel::video_play() {
         if (renderCallback)
             renderCallback(dst_data[0], codecContext->width, codecContext->height, dst_linesize[0]);
         //TODO 方式2：用OpenGL来渲染
-
+        av_frame_unref(frame);// 减1 = 0 释放成员执行的堆区
         releaseAVFrame(&frame);// 释放原始包，因为已经被渲染了，没用了
     }
+    av_frame_unref(frame);// 减1 = 0 释放成员执行的堆区
     releaseAVFrame(&frame);// 出现错误时退出循环，都要释放frame;如果正常退出也不会释放两次，释放实现中做了指针是否为空的判断
     isPlaying = 0;
     av_free(&dst_data[0]);
