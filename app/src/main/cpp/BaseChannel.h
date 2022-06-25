@@ -18,8 +18,8 @@ public:
     bool isPlaying;
     AVCodecContext *codecContext = 0;
 
-    BaseChannel(int streamIndex, AVCodecContext *pCodecContext) : stream_index(streamIndex),
-                                                                  codecContext(pCodecContext) {
+    BaseChannel(int stream_index, AVCodecContext *codecContext) : stream_index(stream_index),
+                                                                  codecContext(codecContext) {
         // 给队列设置Callback，Callback释放队列里面的数据
         packets.setReleaseCallback(releaseAVPacket);
         frames.setReleaseCallback(releaseAVFrame);

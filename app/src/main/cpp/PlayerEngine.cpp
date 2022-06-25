@@ -17,15 +17,18 @@ PlayerEngine::PlayerEngine(const char *data_source, JNICallbackHelper *helper) {
 PlayerEngine::~PlayerEngine() {
     if (data_source) {
         delete data_source;
+        data_source= nullptr;
     }
     if (helper) {
-        delete this->helper;
+        delete helper;
+        helper= nullptr;
     }
 }
 
 void *task_prepare(void *args) {
     PlayerEngine *player = static_cast<PlayerEngine *>(args);
     player->prepare_();
+
     return nullptr; //注意这里要返回，否则?
 }
 
@@ -43,7 +46,7 @@ void PlayerEngine::prepare_() {// 属于子线程了,并且拥有PlayerEngine的
     * 3，AVInputFormat *fmt  Mac、Windows 摄像头、麦克风， 我们目前安卓用不到
     * 4，各种设置：例如：Http 连接超时， 打开rtmp的超时  AVDictionary **options
     */
-    int ret = avformat_open_input(&formatContext, this->data_source, nullptr, &dictionary);
+    int ret = avformat_open_input(&formatContext, data_source, nullptr, &dictionary);
     av_dict_free(&dictionary);
 
     if (ret < 0) { //0 == success
@@ -134,14 +137,22 @@ void PlayerEngine::prepare_() {// 属于子线程了,并且拥有PlayerEngine的
 void *task_start(void *args) {
     PlayerEngine *player = static_cast<PlayerEngine *>(args);
     player->start_();
+
     return nullptr;
 }
 
 void PlayerEngine::start() {
     isPlaying = 1;
+
+    // 视频：1.解码    2.播放
+    // 1.把队列里面的压缩包(AVPacket *)取出来，然后解码成（AVFrame * ）原始包 ----> 保存队列
+    // 2.把队列里面的原始包(AVFrame *)取出来， 视频播放
     if (video_channel) {
         video_channel->start();
     }
+    // 音频：1.解码    2.播放
+    // 1.把队列里面的压缩包(AVPacket *)取出来，然后解码成（AVFrame * ）原始包 ----> 保存队列
+    // 2.把队列里面的原始包(AVFrame *)取出来， 音频播放
     if(audio_channel){
         audio_channel->start();
     }
@@ -157,7 +168,7 @@ void PlayerEngine::start_() { // 子线程 把 AVPacket * 丢到 队列里面去
                 //注意这里传入的packet是指针变量
                 video_channel->packets.insertToQueue(packet);
             }else if(audio_channel && audio_channel->stream_index == packet->stream_index){
-                //TODO
+                audio_channel->packets.insertToQueue(packet);
             }
         }else if(ret == AVERROR_EOF){
             // TODO 表示读完了，要考虑是否播放完成，表示读完了 并不代表播放完毕

@@ -14,7 +14,7 @@ jint JNI_OnLoad(JavaVM *vm_, void *args) {
 }
 
 // 函数指针的实现 实现渲染画面
-void renderCallback(uint8_t *src_data, int width, int height,
+void renderFrameCallback(uint8_t *src_data, int width, int height,
                     int src_linesize) {//lineSize应该就是stride
     pthread_mutex_lock(&mutex);
     if (!window) {
@@ -61,9 +61,9 @@ Java_com_infinite_weplaykt_PlayerEngine_prepareNative(JNIEnv *env, jobject thiz,
     JNICallbackHelper *helper = new JNICallbackHelper(vm, env, thiz);
     const char *data_source_ = env->GetStringUTFChars(data_source, nullptr);
     auto *player = new PlayerEngine(data_source_, helper);//申请的堆空间，注意后面要释放
-    player->setRenderCallback(renderCallback);
+    player->setRenderCallback(renderFrameCallback);
     player->prepare();
-
+    env->ReleaseStringUTFChars(data_source, data_source_);
     return reinterpret_cast<jlong>(player);
 }
 
@@ -72,7 +72,9 @@ JNIEXPORT void JNICALL
 Java_com_infinite_weplaykt_PlayerEngine_startNative(JNIEnv *env, jobject thiz, jlong native_obj) {
     LOGD("startNative")
     PlayerEngine *player = reinterpret_cast<PlayerEngine *>(native_obj);
-    player->start();
+    if (player) {
+        player->start();
+	}
 }
 
 extern "C"

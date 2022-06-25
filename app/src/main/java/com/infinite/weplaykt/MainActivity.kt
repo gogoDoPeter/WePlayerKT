@@ -37,7 +37,7 @@ class MainActivity : AppCompatActivity() {
 
         player?.setSurfaceView(surfaceView!!)
         player?.setDataSource(File(Environment.getExternalStorageDirectory(),
-            "demo.mp4").absolutePath)
+            "demo2.mp4").absolutePath)
 
         // 准备成功的回调处,有C++子线程调用的
         player!!.setOnPreparedListener(object : PlayerEngine.OnPreparedListener {
