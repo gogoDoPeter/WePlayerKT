@@ -17,12 +17,15 @@ private:
     //void (*releaseCallback)(T *) const
     typedef void (*ReleaseCallback)(T *);
 
+    typedef void (*SyncCallback)(queue<T> &);
+
 public:
     queue<T> queue;
     pthread_mutex_t mutex;
     pthread_cond_t cond;
     int work;// 标记队列是否工作
     ReleaseCallback releaseCallback;
+    SyncCallback syncCallback;
 
     SafeQueue() {
         pthread_mutex_init(&mutex, 0);
@@ -106,6 +109,22 @@ public:
 
     void setReleaseCallback(ReleaseCallback releaseCallback) {
         this->releaseCallback = releaseCallback;
+    }
+
+
+    void setSyncCallback(SyncCallback syncCallback) {
+//        SafeQueue::syncCallback = syncCallback;
+        this->syncCallback = syncCallback;
+    }
+
+    /**
+     * 同步操作 丢包
+     */
+    void sync() {
+        pthread_mutex_lock(&mutex);
+        if(syncCallback)
+            syncCallback(queue); // 函数指针，具体丢包动作，让外界完成
+        pthread_mutex_unlock(&mutex);
     }
 };
 

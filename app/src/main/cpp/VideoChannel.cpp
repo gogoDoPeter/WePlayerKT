@@ -4,8 +4,40 @@
 
 #include "VideoChannel.h"
 
-VideoChannel::VideoChannel(int streamIndex, AVCodecContext *pCodecContext) : BaseChannel(
-        streamIndex, pCodecContext) {}
+/**
+ * 丢包 AVFrame * 原始包 很简单，因为不需要考虑 关键帧
+ * @param q
+ */
+void dropAVFrame(queue<AVFrame *> &q) {
+    if (!q.empty()) {
+        AVFrame *frame = q.front();
+        BaseChannel::releaseAVFrame(&frame);
+        q.pop();
+    }
+}
+
+/**
+ * 丢包 AVPacket * 压缩包要考虑I帧
+ * @param q
+ */
+void dropAVPacket(queue<AVPacket *> &q) {
+    while (!q.empty()) {
+        AVPacket *pkt = q.front();
+        if (pkt->flags != AV_PKT_FLAG_KEY) {
+            BaseChannel::releaseAVPacket(&pkt);
+            q.pop();
+        } else {
+            break; // 如果是关键帧，不能丢，那就结束
+        }
+    }
+}
+
+VideoChannel::VideoChannel(int streamIndex, AVCodecContext *pCodecContext, AVRational time_base,
+                           int fps) : BaseChannel(
+        streamIndex, pCodecContext, time_base), fps(fps) {
+    frames.setSyncCallback(dropAVFrame);
+    packets.setSyncCallback(dropAVPacket); //音视频同步这里不需要这个的
+}
 
 VideoChannel::~VideoChannel() {
 
@@ -15,8 +47,8 @@ VideoChannel::~VideoChannel() {
 void VideoChannel::video_decode() {
     AVPacket *pkt = nullptr;
     while (isPlaying) {
-        if(isPlaying && frames.size() > 100){
-            av_usleep(10*1000);
+        if (isPlaying && frames.size() > 100) {
+            av_usleep(10 * 1000);
             continue;
         }
 
@@ -41,7 +73,7 @@ void VideoChannel::video_decode() {
             continue;// B帧 B帧参考前面成功,但是参考后面失败 (可能是P帧还没有出来)，那么等一等重新再拿一次可能就拿到了
         } else if (ret != 0) { // 出错误了
             //解码视频的frame出错，马上释放，防止你在堆区开辟了空间
-            if(frame){
+            if (frame) {
                 releaseAVFrame(&frame);
             }
             break;
@@ -94,6 +126,36 @@ void VideoChannel::video_play() {
                   codecContext->height, //srcSliceH
                   dst_data,
                   dst_linesize);
+        //AVSync
+        double extra_delay = frame->repeat_pict / (2 * fps);// 在之前的编码时，加入的额外延时时间取出来（可能获取不到）
+        double fps_delay = 1.0 / fps; // 根据fps得到延时时间（fps25 == 每秒25帧，计算每一帧的延时时间，0.040000秒即为40ms）
+        double real_delay = extra_delay + fps_delay; // 当前帧的延时时间
+        //获取视频当前时间戳
+        double video_time = frame->best_effort_timestamp * av_q2d(time_base);//获取视频当前显示时间的时间戳
+        double audio_time = audio_channel->audio_time; //获取音频当前显示时间的时间戳
+
+        // 判断两个时间差值，一个快一个慢（快的等慢的，慢的快点追） == 你追我赶
+        double time_diff = video_time - audio_time;
+        if (time_diff > 0) { //视频快 让视频帧睡眠等待
+            if (time_diff > 1) { // 经验值 1, 说明视频帧比音频帧快了很多，可能是拖动条 特殊场景
+                av_usleep((real_delay * 2) * 1000000); //单位是微妙, 乘以1000000 将秒s 的时间单位转换为微妙us
+            } else {
+                av_usleep((real_delay + time_diff) * 1000000);
+            }
+        } else if (time_diff < 0) { //视频慢  让视频帧丢帧加快
+            if (fabs(time_diff) <= 0.05) { // 丢包时要多线程（安全 同步丢包）
+                frames.sync();
+
+                av_frame_unref(frame); // 在ffmpeg中将引用计数做减1操作，当引用计数为0时，ffmpeg会对frame成员变量中申请的堆区进行释放
+                releaseAVFrame(&frame); // 释放当前帧原始包数据
+                continue;
+            }
+
+            //TODO 如果视频比音频慢了很多的情况呢？
+        } else {
+            LOGD("AVSync 100%")
+        }
+
         // ANativeWindow 渲染工作 方式1，用ANativeWindow来渲染
         // SurfaceView  ---- ANativeWindow
         // 如何渲染一帧图像？ --宽，高，数据，数据大小
@@ -133,6 +195,10 @@ void VideoChannel::stop() {
 
 void VideoChannel::setRenderCallback(RenderCallback renderCallback) {
     this->renderCallback = renderCallback;
+}
+
+void VideoChannel::setAudioChannel(AudioChannel *audio_channel) {
+    this->audio_channel = audio_channel;
 }
 
 

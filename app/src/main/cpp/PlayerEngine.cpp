@@ -109,11 +109,16 @@ void PlayerEngine::prepare_() {// 属于子线程了,并且拥有PlayerEngine的
             }
             return;
         }
+
+        AVRational time_base = pStream->time_base;
         // 从编解码器参数中，获取流的类型 codec_type === 音频 视频
         if (pParameters->codec_type == AVMediaType::AVMEDIA_TYPE_AUDIO) {
-            audio_channel = new AudioChannel(stream_index, pCodecContext);
+            audio_channel = new AudioChannel(stream_index, pCodecContext, time_base);
         } else if (pParameters->codec_type == AVMediaType::AVMEDIA_TYPE_VIDEO) {
-            video_channel = new VideoChannel(stream_index, pCodecContext);
+            // 获取视频独有的fps值
+            AVRational fps_rational = pStream->avg_frame_rate;
+            int fps = av_q2d(fps_rational); //转成ffmpeg支持的时间基
+            video_channel = new VideoChannel(stream_index, pCodecContext, time_base, fps);
             video_channel->setRenderCallback(renderCallback);
         }
     }//for end
@@ -148,6 +153,7 @@ void PlayerEngine::start() {
     // 1.把队列里面的压缩包(AVPacket *)取出来，然后解码成（AVFrame * ）原始包 ----> 保存队列
     // 2.把队列里面的原始包(AVFrame *)取出来， 视频播放
     if (video_channel) {
+        video_channel->setAudioChannel(audio_channel);
         video_channel->start();
     }
     // 音频：1.解码    2.播放

@@ -4,8 +4,8 @@
 
 #include "AudioChannel.h"
 
-AudioChannel::AudioChannel(int stream_index, AVCodecContext *codecContext)
-        : BaseChannel(stream_index, codecContext) {
+AudioChannel::AudioChannel(int stream_index, AVCodecContext *codecContext, AVRational time_base)
+        : BaseChannel(stream_index, codecContext, time_base) {
     out_channels = av_get_channel_layout_nb_channels(AV_CH_LAYOUT_STEREO); //获取 声道数 2
     // AV_SAMPLE_FMT_S16: 位声、采用格式大小，存放大小
     out_sample_size = av_get_bytes_per_sample(AV_SAMPLE_FMT_S16); //采样格式大小
@@ -46,8 +46,8 @@ void *task_audio_decode(void *args) {
 void AudioChannel::audio_decode() {
     AVPacket *pkt = nullptr;
     while (isPlaying) {
-        if(isPlaying && frames.size() > 100){ //控制frames队列大小，等待队列中的数据被消费, 优化内存
-            av_usleep(10*1000);
+        if (isPlaying && frames.size() > 100) { //控制frames队列大小，等待队列中的数据被消费, 优化内存
+            av_usleep(10 * 1000);
             continue;
         }
 
@@ -71,7 +71,7 @@ void AudioChannel::audio_decode() {
             continue; // 有可能音频帧，也会获取失败，重新拿一次
         } else if (ret != 0) {
             // 解码视频的frame出错，马上释放，防止你在堆区开辟了空间泄漏
-            if(frame){
+            if (frame) {
                 releaseAVFrame(&frame);
             }
             break; // avcodec_receive_frame失败了，注意刚刚通过av_frame_alloc分配的frame是否要释放?
@@ -123,6 +123,11 @@ int AudioChannel::getPcmAndSize() {
 //             " \n in frame->sample_rate:%d, frame->nb_samples(输入的样本数):%d",
 //             pcm_data_size, samples_per_channel, out_sample_size, out_channels, out_sample_rate,
 //             frame->sample_rate, frame->nb_samples)
+
+        // android Java or KT 中时间有单位：微妙，毫秒，秒 等，但是在FFmpeg里面有自己的单位（时间基TimeBase）
+        // best_effort_timestamp是读取到的视频帧pts,av_q2d(time_base) 就是一个分子处分母的运算
+        audio_time = frame->best_effort_timestamp * av_q2d(time_base);
+
         break;
     }
     av_frame_unref(frame);  // 减1 = 0 释放成员执行的堆区

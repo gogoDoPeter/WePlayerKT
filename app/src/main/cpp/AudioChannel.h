@@ -35,8 +35,10 @@ public:
     SLPlayItf bqPlayerPlay = 0; // 播放器接口
     SLAndroidSimpleBufferQueueItf bqPlayerBufferQueue=0; // 播放器队列接口
 
+    double audio_time;
+
 public:
-    AudioChannel(int streamIndex, AVCodecContext *pCodecContext);
+    AudioChannel(int streamIndex, AVCodecContext *pCodecContext, AVRational time_base);
 
     virtual ~AudioChannel();
 

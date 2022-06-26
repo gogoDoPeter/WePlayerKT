@@ -6,8 +6,9 @@
 #define WEPLAYKT_BASECHANNEL_H
 
 extern "C" {
-    #include <libavcodec/avcodec.h>
+#include <libavcodec/avcodec.h>
 };
+
 #include "util/SafeQueue.h"
 #include <LogUtils.h>
 
@@ -19,8 +20,12 @@ public:
     bool isPlaying;
     AVCodecContext *codecContext = 0;
 
-    BaseChannel(int stream_index, AVCodecContext *codecContext) : stream_index(stream_index),
-                                                                  codecContext(codecContext) {
+    AVRational time_base; //AudioChannel VideoChannel 都需要用到 时间基）ffmpeg中统计时间的单位而已
+
+    BaseChannel(int stream_index, AVCodecContext *codecContext, AVRational time_base)
+            : stream_index(stream_index),
+              codecContext(codecContext),
+              time_base(time_base) {
         // 给队列设置Callback，Callback释放队列里面的数据
         packets.setReleaseCallback(releaseAVPacket);
         frames.setReleaseCallback(releaseAVFrame);
@@ -46,8 +51,8 @@ public:
      * @param packet
      */
     // typedef void (*ReleaseCallback)(T *);
-    static void releaseAVFrame(AVFrame **f){
-        if(f){
+    static void releaseAVFrame(AVFrame **f) {
+        if (f) {
             av_frame_free(f); // 释放队列里面的 T == AVFrame
             *f = 0;
         }
