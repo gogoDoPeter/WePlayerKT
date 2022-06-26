@@ -81,12 +81,21 @@ extern "C"
 JNIEXPORT void JNICALL
 Java_com_infinite_weplaykt_PlayerEngine_stopNative(JNIEnv *env, jobject thiz, jlong native_obj) {
     LOGD("stopNative")
+    PlayerEngine *player = reinterpret_cast<PlayerEngine *>(native_obj);
+    if (player) {
+        player->stop();
+    }
 }
 
 extern "C"
 JNIEXPORT void JNICALL
 Java_com_infinite_weplaykt_PlayerEngine_releaseNative(JNIEnv *env, jobject thiz, jlong native_obj) {
     LOGD("releaseNative")
+    PlayerEngine *player = reinterpret_cast<PlayerEngine *>(native_obj);
+    if (player) {
+        player->release();
+        DELETE(player);
+    }
 }
 
 extern "C"
@@ -104,4 +113,27 @@ Java_com_infinite_weplaykt_PlayerEngine_setSurfaceNative(JNIEnv *env, jobject th
     // 创建新的窗口用于视频显示  让surface和window建立绑定
     window = ANativeWindow_fromSurface(env, surface);
     pthread_mutex_unlock(&mutex);
+}
+
+extern "C"
+JNIEXPORT jint JNICALL
+Java_com_infinite_weplaykt_PlayerEngine_getDurationNative(JNIEnv *env, jobject thiz,
+                                                          jlong native_obj) {
+    LOGD("getDuration")
+    PlayerEngine *player = reinterpret_cast<PlayerEngine *>(native_obj);
+    if (player) {
+        return player->getDuration();
+    }
+    return 0;
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_infinite_weplaykt_PlayerEngine_seekNative(JNIEnv *env, jobject thiz, jint play_value,
+                                                   jlong native_obj) {
+    LOGD("seek progress")
+    PlayerEngine *player = reinterpret_cast<PlayerEngine *>(native_obj);
+    if (player) {
+        player->seek(play_value);
+    }
 }

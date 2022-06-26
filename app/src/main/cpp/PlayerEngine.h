@@ -24,6 +24,7 @@ private:
     char *data_source = 0; // 指针 * 请赋初始值
     pthread_t pid_prepare;
     pthread_t pid_start;
+    pthread_t pid_stop;
 
     AVFormatContext *formatContext = 0; // 媒体上下文 封装格式
     AudioChannel *audio_channel = 0;
@@ -31,6 +32,9 @@ private:
     JNICallbackHelper *helper = 0;
     bool isPlaying=0; // 是否播放
     RenderCallback renderCallback;
+
+    int duration; //视频总时长
+    pthread_mutex_t seek_mutex;
 
 public:
     PlayerEngine(const char *data_source, JNICallbackHelper *helper);
@@ -43,8 +47,16 @@ public:
 
     void start();
     void start_();
+    void stop();
+    void release();
 
     void setRenderCallback(RenderCallback renderCallback);
+
+    int getDuration();
+
+    void seek(int progress);
+
+    void stop_(PlayerEngine *pEngine);
 };
 
 

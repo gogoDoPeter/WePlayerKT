@@ -35,12 +35,26 @@ void dropAVPacket(queue<AVPacket *> &q) {
 VideoChannel::VideoChannel(int streamIndex, AVCodecContext *pCodecContext, AVRational time_base,
                            int fps) : BaseChannel(
         streamIndex, pCodecContext, time_base), fps(fps) {
+    LOGD("AudioChannel constructor")
     frames.setSyncCallback(dropAVFrame);
     packets.setSyncCallback(dropAVPacket); //音视频同步这里不需要这个的
 }
 
 VideoChannel::~VideoChannel() {
+    LOGD("AudioChannel destructor")
+    DELETE(audio_channel);
+}
 
+void VideoChannel::stop() {
+    LOGD("AudioChannel stop")
+    pthread_join(pid_video_decode, nullptr);
+    pthread_join(pid_video_play, nullptr);
+
+    isPlaying=false; //让所有的while全部停掉
+    packets.setWork(0); //让所有的while循环中干不了活
+    frames.setWork(0);
+    packets.clear(); //清除队列中数据
+    frames.clear();
 }
 
 //视频：取出队列的压缩包 进行解码 解码后的原始包 再push队列中去
@@ -144,7 +158,9 @@ void VideoChannel::video_play() {
             } else {
                 av_usleep((real_delay + time_diff) * 1000000);
             }
-        } else if (time_diff < 0) { //视频慢  让视频帧丢帧加快
+        }
+        //非常精准的判断
+        if (time_diff < 0) { //视频慢  让视频帧丢帧加快
             if (fabs(time_diff) <= 0.05) { // 丢包时要多线程（安全 同步丢包）
                 frames.sync();
 
@@ -156,6 +172,7 @@ void VideoChannel::video_play() {
             //TODO 如果视频比音频慢了很多的情况呢？
         } else {
             LOGD("AVSync 100%")
+            av_usleep(real_delay* 1000000);//单位是微妙, 乘以1000000 将秒s 的时间单位转换为微妙us
         }
 
         // ANativeWindow 渲染工作 方式1，用ANativeWindow来渲染
@@ -189,10 +206,6 @@ void VideoChannel::start() {
     pthread_create(&pid_video_decode, nullptr, task_video_decode, this);
     // 第二线线程：视频：从队列取出原始包，播放
     pthread_create(&pid_video_play, nullptr, task_video_play, this);
-}
-
-void VideoChannel::stop() {
-
 }
 
 void VideoChannel::setRenderCallback(RenderCallback renderCallback) {

@@ -14,6 +14,7 @@ private:
     jobject job;// 为了更好的寻找到 PlayerEngine.kt实例
     jmethodID jmd_prepared;
     jmethodID jmd_onError;
+    jmethodID jmd_onProgress;
 
 public:
     JNICallbackHelper(JavaVM *vm,JNIEnv *env,jobject job);
@@ -22,6 +23,7 @@ public:
 
     void onPrepared(int thread_mode);
     void onError(int thread_mode, int errCode, char *errMsg);
+    void onProgress(int thread_mode, double audio_time);
 };
 
 

@@ -22,7 +22,18 @@ class PlayerEngine : LifecycleObserver, SurfaceHolder.Callback {
     private var onErrorListener: OnErrorListener? = null
     private var TAG: String = "PlayerEngine"
     private var dataSource: String? = null
-    private var surfaceHolder : SurfaceHolder? = null
+    private var surfaceHolder: SurfaceHolder? = null
+
+    //获取总时长  这个duration是属性，有隐式的get函数
+    val duration: Int get() = getDurationNative(nativeObj!!)
+
+//    private fun getDurationNative(nativeObj: Long): Int {
+//        TODO("Not yet implemented")
+//    }
+
+    fun seek(playProgress: Int) {
+        seekNative(playProgress, nativeObj!!)
+    }
 
     fun setDataSource(dataSource: String?) {
         this.dataSource = dataSource
@@ -88,6 +99,22 @@ class PlayerEngine : LifecycleObserver, SurfaceHolder.Callback {
         this.onErrorListener = onErrorListener
     }
 
+    fun onProgress(progress: Int) {
+        if (onProgressListener != null) {
+            onProgressListener!!.onProgress(progress)
+        }
+    }
+
+    private var onProgressListener: OnProgressListener? = null
+
+    interface OnProgressListener {
+        fun onProgress(progress: Int)
+    }
+
+    fun setOnProgressListener(onProgressListener: OnProgressListener?) {
+        this.onProgressListener = onProgressListener
+    }
+
     /**
      * set setSurfaceView
      * @param surfaceView
@@ -116,4 +143,7 @@ class PlayerEngine : LifecycleObserver, SurfaceHolder.Callback {
     private external fun stopNative(nativeObj: Long)
     private external fun releaseNative(nativeObj: Long)
     private external fun setSurfaceNative(surface: Surface, nativeObj: Long)
+
+    private external fun getDurationNative(nativeObj: Long): Int
+    private external fun seekNative(playValue: Int, nativeObj: Long)
 }

@@ -6,6 +6,7 @@
 
 AudioChannel::AudioChannel(int stream_index, AVCodecContext *codecContext, AVRational time_base)
         : BaseChannel(stream_index, codecContext, time_base) {
+    LOGD("AudioChannel constructor")
     out_channels = av_get_channel_layout_nb_channels(AV_CH_LAYOUT_STEREO); //获取 声道数 2
     // AV_SAMPLE_FMT_S16: 位声、采用格式大小，存放大小
     out_sample_size = av_get_bytes_per_sample(AV_SAMPLE_FMT_S16); //采样格式大小
@@ -33,7 +34,51 @@ AudioChannel::AudioChannel(int stream_index, AVCodecContext *codecContext, AVRat
 }
 
 AudioChannel::~AudioChannel() {
+    LOGD("AudioChannel destructor")
+    if (swr_ctx) {
+        swr_free(&swr_ctx);
+    }
+    DELETE(out_buffers);
+}
 
+void AudioChannel::stop() {
+    LOGD("AudioChannel stop")
+    //等前两个线程（解码线程和播放线程）执行完毕，再释放
+    pthread_join(pid_audio_decode, nullptr);
+    pthread_join(pid_audio_play, nullptr);
+
+    isPlaying = false;
+    packets.setWork(0);
+    frames.setWork(0);
+
+    // 7 OpenSLES释放工作
+    // 7.1 设置停止状态
+    if (bqPlayerPlay) {
+        (*bqPlayerPlay)->SetPlayState(bqPlayerPlay, SL_PLAYSTATE_STOPPED);
+        bqPlayerPlay = nullptr;
+    }
+    // 7.2 销毁播放器
+    if (bqPlayerObject) {
+        (*bqPlayerObject)->Destroy(bqPlayerObject);
+        bqPlayerObject = nullptr;
+        bqPlayerBufferQueue = nullptr;
+    }
+    // 7.3 销毁混音器
+    if (outputMixObject) {
+        (*outputMixObject)->Destroy(outputMixObject);
+        outputMixObject= nullptr;
+        //如果使用了混音器接口，这里也要释放
+    }
+    // 7.4 销毁引擎
+    if(engineObject){
+        (*engineObject)->Destroy(engineObject);
+        engineObject= nullptr;
+        engineInterface= nullptr;
+    }
+
+    //队列清空
+    packets.clear();
+    frames.clear();
 }
 
 void *task_audio_decode(void *args) {
@@ -128,6 +173,10 @@ int AudioChannel::getPcmAndSize() {
         // android Java or KT 中时间有单位：微妙，毫秒，秒 等，但是在FFmpeg里面有自己的单位（时间基TimeBase）
         // best_effort_timestamp是读取到的视频帧pts,av_q2d(time_base) 就是一个分子处分母的运算
         audio_time = frame->best_effort_timestamp * av_q2d(time_base);
+        //这里会引起Java的内存泄漏
+//        if (this->jniCallbackHelper) {
+//            jniCallbackHelper->onProgress(THREAD_TYPE_CHILD, audio_time);
+//        }
 
         break;
     }
@@ -296,10 +345,6 @@ void AudioChannel::start() {
     pthread_create(&pid_audio_decode, nullptr, task_audio_decode, this);
     // 第二线线程：音频：从队列取出原始包，播放
     pthread_create(&pid_audio_play, nullptr, task_audio_play, this);
-}
-
-void AudioChannel::stop() {
-
 }
 
 

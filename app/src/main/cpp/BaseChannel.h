@@ -10,6 +10,7 @@ extern "C" {
 };
 
 #include "util/SafeQueue.h"
+#include "JNICallbackHelper.h"
 #include <LogUtils.h>
 
 class BaseChannel {
@@ -21,6 +22,7 @@ public:
     AVCodecContext *codecContext = 0;
 
     AVRational time_base; //AudioChannel VideoChannel 都需要用到 时间基）ffmpeg中统计时间的单位而已
+    JNICallbackHelper *jniCallbackHelper = 0;
 
     BaseChannel(int stream_index, AVCodecContext *codecContext, AVRational time_base)
             : stream_index(stream_index),
@@ -35,6 +37,11 @@ public:
         packets.clear();
         frames.clear();
     }
+
+    void setJNICallbackHelper(JNICallbackHelper *jniCallbackHelper) {
+        this->jniCallbackHelper = jniCallbackHelper; //使用前要判断下
+    }
+
     /**
      * 释放队列中所有的 AVPacket *
      * @param packet

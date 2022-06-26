@@ -31,9 +31,9 @@ public:
     SLObjectItf engineObject = 0; // 引擎
     SLEngineItf engineInterface = 0; // 引擎接口
     SLObjectItf outputMixObject = 0; // 混音器
-    SLObjectItf bqPlayerObject=0; // 播放器
+    SLObjectItf bqPlayerObject = 0; // 播放器
     SLPlayItf bqPlayerPlay = 0; // 播放器接口
-    SLAndroidSimpleBufferQueueItf bqPlayerBufferQueue=0; // 播放器队列接口
+    SLAndroidSimpleBufferQueueItf bqPlayerBufferQueue = 0; // 播放器队列接口
 
     double audio_time;
 
