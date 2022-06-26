@@ -72,6 +72,7 @@ void AudioChannel::audio_decode() {
         } else if (ret != 0) {
             // 解码视频的frame出错，马上释放，防止你在堆区开辟了空间泄漏
             if (frame) {
+                av_frame_unref(frame); // ffmpeg中对frame的引用计数减1操作，当计数为0时释放成员分配的堆区
                 releaseAVFrame(&frame);
             }
             break; // avcodec_receive_frame失败了，注意刚刚通过av_frame_alloc分配的frame是否要释放?
@@ -130,6 +131,7 @@ int AudioChannel::getPcmAndSize() {
 
         break;
     }
+
     av_frame_unref(frame);  // 减1 = 0 释放成员执行的堆区
     releaseAVFrame(&frame); // 释放AVFrame * 本身堆区空间
 

@@ -115,13 +115,18 @@ void PlayerEngine::prepare_() {// 属于子线程了,并且拥有PlayerEngine的
         if (pParameters->codec_type == AVMediaType::AVMEDIA_TYPE_AUDIO) {
             audio_channel = new AudioChannel(stream_index, pCodecContext, time_base);
         } else if (pParameters->codec_type == AVMediaType::AVMEDIA_TYPE_VIDEO) {
+            // 虽然是视频类型，但是只有一帧封面，这个不应该参与 视频 解码 和 播放，而是跳过或做对应专门处理
+            if(pStream->disposition & AV_DISPOSITION_ATTACHED_PIC){
+                continue; // 过滤 封面流
+            }
+
             // 获取视频独有的fps值
             AVRational fps_rational = pStream->avg_frame_rate;
             int fps = av_q2d(fps_rational); //转成ffmpeg支持的时间基
             video_channel = new VideoChannel(stream_index, pCodecContext, time_base, fps);
             video_channel->setRenderCallback(renderCallback);
         }
-    }//for end
+    } //for end
 
     //如果流中 没有 音频 也没有 视频
     if (!audio_channel && !video_channel) {

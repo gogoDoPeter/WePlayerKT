@@ -36,8 +36,11 @@ class MainActivity : AppCompatActivity() {
         lifecycle.addObserver(player!!)// MainActivity做为被观察者，与PlayerEngine观察者建立绑定关系
 
         player?.setSurfaceView(surfaceView!!)
+//        player?.setDataSource(File(Environment.getExternalStorageDirectory(),
+//            "demo2.mp4").absolutePath)
+
         player?.setDataSource(File(Environment.getExternalStorageDirectory(),
-            "demo2.mp4").absolutePath)
+            "aabb/memory.mkv").absolutePath)
 
         // 准备成功的回调处,有C++子线程调用的
         player!!.setOnPreparedListener(object : PlayerEngine.OnPreparedListener {

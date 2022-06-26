@@ -74,6 +74,8 @@ void VideoChannel::video_decode() {
         } else if (ret != 0) { // 出错误了
             //解码视频的frame出错，马上释放，防止你在堆区开辟了空间
             if (frame) {
+                //TODO frame中是否也要做引用计数减一
+                av_frame_unref(frame);
                 releaseAVFrame(&frame);
             }
             break;
