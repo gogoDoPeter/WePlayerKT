@@ -6,6 +6,7 @@
 
 #include <jni.h>
 #include <util.h>
+#include <LogUtils.h>
 
 class JNICallbackHelper {
 private:
@@ -15,6 +16,9 @@ private:
     jmethodID jmd_prepared;
     jmethodID jmd_onError;
     jmethodID jmd_onProgress;
+    int last_time=0;
+    int current_time;
+    jclass playerEngineKTClass;
 
 public:
     JNICallbackHelper(JavaVM *vm,JNIEnv *env,jobject job);

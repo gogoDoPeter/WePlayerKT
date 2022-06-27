@@ -86,8 +86,7 @@ class MainActivity : AppCompatActivity(), SeekBar.OnSeekBarChangeListener {
         player!!.setOnProgressListener(object : PlayerEngine.OnProgressListener {
             override fun onProgress(playProgress: Int) {
                 if (!isTouch) { //如果没有托动时，实时显示播放进度
-                    //C++层是异步线程调用上来的，所以要这样写，小心UI
-                    runOnUiThread {
+                    runOnUiThread { //C++层是异步线程调用上来的，所以要这样写，小心UI
                         if (duration != 0) {
                             //playProgress 是C++层中ffmpeg获取的当前播放时间，单位是秒
                             tvTime!!.text =

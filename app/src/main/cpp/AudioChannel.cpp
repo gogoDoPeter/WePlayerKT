@@ -173,10 +173,11 @@ int AudioChannel::getPcmAndSize() {
         // android Java or KT 中时间有单位：微妙，毫秒，秒 等，但是在FFmpeg里面有自己的单位（时间基TimeBase）
         // best_effort_timestamp是读取到的视频帧pts,av_q2d(time_base) 就是一个分子处分母的运算
         audio_time = frame->best_effort_timestamp * av_q2d(time_base);
+        LOGD("audio_time:%ld",audio_time)
         //这里会引起Java的内存泄漏
-//        if (this->jniCallbackHelper) {
-//            jniCallbackHelper->onProgress(THREAD_TYPE_CHILD, audio_time);
-//        }
+        if (this->jniCallbackHelper) {
+            jniCallbackHelper->onProgress(THREAD_TYPE_CHILD, audio_time);
+        }
 
         break;
     }
