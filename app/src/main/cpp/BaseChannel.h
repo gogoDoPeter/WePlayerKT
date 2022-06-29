@@ -19,6 +19,7 @@ public:
     SafeQueue<AVPacket *> packets;
     SafeQueue<AVFrame *> frames;
     bool isPlaying;
+    bool isPause = false;
     AVCodecContext *codecContext = 0;
 
     AVRational time_base; //AudioChannel VideoChannel 都需要用到 时间基）ffmpeg中统计时间的单位而已

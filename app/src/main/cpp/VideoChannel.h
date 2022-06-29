@@ -43,6 +43,8 @@ public:
     void setRenderCallback(RenderCallback renderCallback);
 
     void setAudioChannel(AudioChannel *audio_channel);
+
+    void pause();
 };
 
 #endif //WEPLAYKT_VIDEOCHANNEL_H

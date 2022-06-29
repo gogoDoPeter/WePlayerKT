@@ -332,3 +332,10 @@ void PlayerEngine::seek(int progress) {
     pthread_mutex_unlock(&seek_mutex);
 }
 
+void PlayerEngine::pause() {
+    if (video_channel)
+        video_channel->pause();
+    if (audio_channel)
+        audio_channel->pause();
+}
+

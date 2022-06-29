@@ -9,6 +9,7 @@ import android.os.Environment
 import android.util.Log
 import android.view.SurfaceView
 import android.view.View
+import android.widget.Button
 import android.widget.SeekBar
 import android.widget.TextView
 import android.widget.Toast
@@ -18,7 +19,7 @@ import androidx.lifecycle.Lifecycle
 import com.infinite.weplaykt.databinding.ActivityMainBinding
 import java.io.File
 
-class MainActivity : AppCompatActivity(), SeekBar.OnSeekBarChangeListener {
+class MainActivity : AppCompatActivity(), SeekBar.OnSeekBarChangeListener, View.OnClickListener {
     private var TAG: String = "MainActivity"
     private lateinit var binding: ActivityMainBinding
     private var tvState: TextView? = null
@@ -29,6 +30,12 @@ class MainActivity : AppCompatActivity(), SeekBar.OnSeekBarChangeListener {
     private var tvTime: TextView? = null
     private var isTouch = false
     private var duration = 0
+
+    private var btStart: Button? = null
+    private var btPre: Button? = null
+    private var btNext: Button? = null
+    private var btStop: Button? = null
+    private var isStart: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -42,12 +49,25 @@ class MainActivity : AppCompatActivity(), SeekBar.OnSeekBarChangeListener {
         seekBar = binding.seekBar
         seekBar?.setOnSeekBarChangeListener(this)
 
+        btStart = binding.btStart
+        btStop = binding.btStop
+        btPre = binding.btPre
+        btNext = binding.btNext
+        btStart?.setOnClickListener(this)
+        btStop?.setOnClickListener(this)
+        btPre?.setOnClickListener(this)
+        btNext?.setOnClickListener(this)
+
         player = PlayerEngine()
         lifecycle.addObserver(player!!)// MainActivity做为被观察者，与PlayerEngine观察者建立绑定关系
 
         player?.setSurfaceView(surfaceView!!)
-        player?.setDataSource(File(Environment.getExternalStorageDirectory(),
-            "demo.mp4").absolutePath)
+        player?.setDataSource(
+            File(
+                Environment.getExternalStorageDirectory(),
+                "demo.mp4"
+            ).absolutePath
+        )
 
 //        player?.setDataSource(File(Environment.getExternalStorageDirectory(),
 //            "aabb/memory.mkv").absolutePath)
@@ -69,6 +89,7 @@ class MainActivity : AppCompatActivity(), SeekBar.OnSeekBarChangeListener {
                     tvState!!.text = "init success"
                 }
                 player!!.start()
+                isStart=true
             }
 
         })
@@ -152,8 +173,10 @@ class MainActivity : AppCompatActivity(), SeekBar.OnSeekBarChangeListener {
     private fun checkPermission() {
         mPermissionList.clear()
         for (permission in permissions) {
-            if (ContextCompat.checkSelfPermission(this,
-                    permission) != PackageManager.PERMISSION_GRANTED
+            if (ContextCompat.checkSelfPermission(
+                    this,
+                    permission
+                ) != PackageManager.PERMISSION_GRANTED
             ) {
                 mPermissionList.add(permission)
             }
@@ -193,6 +216,34 @@ class MainActivity : AppCompatActivity(), SeekBar.OnSeekBarChangeListener {
     override fun onDestroy() {
         super.onDestroy()
         Log.d(TAG, "onDestroy")
+    }
+
+    override fun onClick(v: View?) {
+        when (v?.id) {
+            R.id.bt_start -> {
+                Toast.makeText(this, "点击了start", Toast.LENGTH_SHORT).show()
+                playMedia()
+            }
+            R.id.bt_stop -> {
+                Toast.makeText(this, "click stop", Toast.LENGTH_SHORT).show()
+            }
+            R.id.bt_pre -> {
+                Toast.makeText(this, "click pre", Toast.LENGTH_SHORT).show()
+            }
+            R.id.bt_next -> {
+                Toast.makeText(this, "click next", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun playMedia() {
+        if(isStart){
+            player?.pauseMedia()
+            isStart=false
+        }else{
+            player?.playMedia()
+            isStart=true
+        }
     }
 
 }

@@ -58,6 +58,20 @@ class PlayerEngine : LifecycleObserver, SurfaceHolder.Callback {
         releaseNative(nativeObj!!)
     }
 
+    /**
+     * Pause media play
+     */
+    fun pauseMedia() {
+        pauseNative(nativeObj!!)
+    }
+
+    /**
+     * Start media play again
+     */
+    fun playMedia() {
+        playNative(nativeObj!!)
+    }
+
     //对视频文件读取成功后给jni反射调用的
     fun onPrepared() {
         if (onPreparedListener != null) {
@@ -146,4 +160,7 @@ class PlayerEngine : LifecycleObserver, SurfaceHolder.Callback {
 
     private external fun getDurationNative(nativeObj: Long): Int
     private external fun seekNative(playValue: Int, nativeObj: Long)
+
+    private external fun pauseNative(nativeObj: Long)
+    private external fun playNative(nativeObj: Long)
 }

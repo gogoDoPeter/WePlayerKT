@@ -128,6 +128,11 @@ void VideoChannel::video_play() {
                                          nullptr, nullptr,
                                          nullptr);//filter使用OpenGL来做，一般不用ffmpeg的这个模块
     while (isPlaying) {
+        if(isPause){
+            av_usleep(500 * 1000);
+            continue;
+        }
+
         int ret = frames.getQueueAndDel(frame);
         if (!isPlaying) { // 如果关闭了播放
             break;
@@ -214,6 +219,10 @@ void VideoChannel::setRenderCallback(RenderCallback renderCallback) {
 
 void VideoChannel::setAudioChannel(AudioChannel *audio_channel) {
     this->audio_channel = audio_channel;
+}
+
+void VideoChannel::pause() {
+    isPause = true;
 }
 
 

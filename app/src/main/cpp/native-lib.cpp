@@ -137,3 +137,23 @@ Java_com_infinite_weplaykt_PlayerEngine_seekNative(JNIEnv *env, jobject thiz, ji
         player->seek(play_value);
     }
 }
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_infinite_weplaykt_PlayerEngine_pauseNative(JNIEnv *env, jobject thiz, jlong native_obj) {
+    LOGD("pause")
+    PlayerEngine *player = reinterpret_cast<PlayerEngine *>(native_obj);
+    if (player) {
+        player->pause();
+    }
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_infinite_weplaykt_PlayerEngine_playNative(JNIEnv *env, jobject thiz, jlong native_obj) {
+    LOGD("play")
+    PlayerEngine *player = reinterpret_cast<PlayerEngine *>(native_obj);
+    if (player) {
+        player->play();
+    }
+}

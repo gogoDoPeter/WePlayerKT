@@ -51,6 +51,8 @@ public:
     void audio_play();
 
     int getPcmAndSize();
+
+    void pause();
 };
 
 

@@ -57,6 +57,8 @@ public:
     void seek(int progress);
 
     void stop_(PlayerEngine *pEngine);
+
+    void pause();
 };
 
 

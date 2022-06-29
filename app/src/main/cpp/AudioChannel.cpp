@@ -66,14 +66,14 @@ void AudioChannel::stop() {
     // 7.3 销毁混音器
     if (outputMixObject) {
         (*outputMixObject)->Destroy(outputMixObject);
-        outputMixObject= nullptr;
+        outputMixObject = nullptr;
         //如果使用了混音器接口，这里也要释放
     }
     // 7.4 销毁引擎
-    if(engineObject){
+    if (engineObject) {
         (*engineObject)->Destroy(engineObject);
-        engineObject= nullptr;
-        engineInterface= nullptr;
+        engineObject = nullptr;
+        engineInterface = nullptr;
     }
 
     //队列清空
@@ -173,7 +173,7 @@ int AudioChannel::getPcmAndSize() {
         // android Java or KT 中时间有单位：微妙，毫秒，秒 等，但是在FFmpeg里面有自己的单位（时间基TimeBase）
         // best_effort_timestamp是读取到的视频帧pts,av_q2d(time_base) 就是一个分子处分母的运算
         audio_time = frame->best_effort_timestamp * av_q2d(time_base);
-        LOGD("audio_time:%ld",audio_time)
+        LOGD("audio_time:%ld", audio_time)
         //这里会引起Java的内存泄漏
         if (this->jniCallbackHelper) {
             jniCallbackHelper->onProgress(THREAD_TYPE_CHILD, audio_time);
@@ -346,6 +346,10 @@ void AudioChannel::start() {
     pthread_create(&pid_audio_decode, nullptr, task_audio_decode, this);
     // 第二线线程：音频：从队列取出原始包，播放
     pthread_create(&pid_audio_play, nullptr, task_audio_play, this);
+}
+
+void AudioChannel::pause() {
+    isPause = true;
 }
 
 
